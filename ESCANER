@@ -1,1 +1,170 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.regex.Pattern;
+
+public class NetworkScanner extends JFrame {
+    private JTextField txtIPStart;
+    private JTextField txtIPEnd;
+    private JButton btnScan;
+    private JButton btnClear;
+    private JProgressBar progressBar;
+    private JTable table;
+    private DefaultTableModel tableModel;
+
+    public NetworkScanner() {
+        setTitle("Escáner de Red");
+        setSize(600, 400);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        initComponents();
+        setLocationRelativeTo(null);
+    }
+
+    private void initComponents() {
+        txtIPStart = new JTextField(12);
+        txtIPEnd = new JTextField(12);
+        btnScan = new JButton("Escanear");
+        btnClear = new JButton("Limpiar");
+        progressBar = new JProgressBar(0, 100);
+
+        tableModel = new DefaultTableModel(new String[]{"IP", "Nombre", "Estado", "Tiempo (ms)"}, 0);
+        table = new JTable(tableModel);
+
+        JPanel panelInputs = new JPanel();
+        panelInputs.add(new JLabel("IP Inicio:"));
+        panelInputs.add(txtIPStart);
+        panelInputs.add(new JLabel("IP Fin:"));
+        panelInputs.add(txtIPEnd);
+        panelInputs.add(btnScan);
+        panelInputs.add(btnClear);
+
+        setLayout(new BorderLayout());
+        add(panelInputs, BorderLayout.NORTH);
+        add(new JScrollPane(table), BorderLayout.CENTER);
+        add(progressBar, BorderLayout.SOUTH);
+
+        btnScan.addActionListener(e -> startScan());
+        btnClear.addActionListener(e -> clearAll());
+    }
+
+    private void startScan() {
+        String startIP = txtIPStart.getText().trim();
+        String endIP = txtIPEnd.getText().trim();
+
+        if (!validateIP(startIP) || !validateIP(endIP)) {
+            JOptionPane.showMessageDialog(this, "Ingrese IPs válidas.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (compareIPs(startIP, endIP) > 0) {
+            JOptionPane.showMessageDialog(this, "La IP inicial debe ser menor o igual a la IP final.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        btnScan.setEnabled(false);
+        tableModel.setRowCount(0);
+        new Thread(() -> scanRange(startIP, endIP)).start();
+    }
+
+    private void scanRange(String startIP, String endIP) {
+        long start = ipToLong(startIP);
+        long end = ipToLong(endIP);
+        int total = (int)(end - start + 1);
+        progressBar.setMaximum(total);
+        progressBar.setValue(0);
+
+        for (long ip = start; ip <= end; ip++) {
+            String currentIP = longToIP(ip);
+            long time = pingIP(currentIP);
+            String status = (time >= 0) ? "Conectado" : "No responde";
+            String name = "No disponible";
+            if (time >= 0) {
+                try {
+                    InetAddress addr = InetAddress.getByName(currentIP);
+                    name = addr.getHostName();
+                } catch (UnknownHostException ignored) {}
+            }
+
+            final String ipFinal = currentIP;
+            final String nameFinal = name;
+            final String statusFinal = status;
+            final String timeFinal = (time >= 0) ? String.valueOf(time) : "-";
+
+            SwingUtilities.invokeLater(() -> {
+                tableModel.addRow(new Object[]{ipFinal, nameFinal, statusFinal, timeFinal});
+                progressBar.setValue(progressBar.getValue() + 1);
+            });
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(this, "Escaneo finalizado.");
+            btnScan.setEnabled(true);
+        });
+    }
+
+    private long pingIP(String ip) {
+        try {
+            long startTime = System.currentTimeMillis();
+            Process p = Runtime.getRuntime().exec("ping -n 1 -w 1000 " + ip);
+            BufferedReader inputStream = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String s;
+            while ((s = inputStream.readLine()) != null) {
+                if (s.contains("TTL=")) {
+                    long endTime = System.currentTimeMillis();
+                    return endTime - startTime;
+                }
+            }
+        } catch (Exception e) {
+            // Ignorar errores
+        }
+        return -1;
+    }
+
+    private boolean validateIP(String ip) {
+        String pattern = "^((25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)(\\.|$)){4}$";
+        return Pattern.matches(pattern, ip);
+    }
+
+    private int compareIPs(String ip1, String ip2) {
+        long l1 = ipToLong(ip1);
+        long l2 = ipToLong(ip2);
+        return Long.compare(l1, l2);
+    }
+
+    private long ipToLong(String ip) {
+        String[] parts = ip.split("\\.");
+        long res = 0;
+        for (String part : parts) {
+            res = res * 256 + Integer.parseInt(part);
+        }
+        return res;
+    }
+
+    private String longToIP(long ip) {
+        return String.format("%d.%d.%d.%d",
+                (ip >> 24) & 0xFF,
+                (ip >> 16) & 0xFF,
+                (ip >> 8) & 0xFF,
+                ip & 0xFF);
+    }
+
+    private void clearAll() {
+        txtIPStart.setText("");
+        txtIPEnd.setText("");
+        tableModel.setRowCount(0);
+        progressBar.setValue(0);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            NetworkScanner ns = new NetworkScanner();
+            ns.setVisible(true);
+        });
+    }
+}
 
