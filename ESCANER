@@ -7,10 +7,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.regex.Pattern;
 
-/**
- * NetworkScanner: Aplicación para escanear un rango de IPs,
- * mostrando estado, nombre del equipo y tiempo de respuesta.
- */
 public class NetworkScanner extends JFrame {
     private JTextField txtIPStart;
     private JTextField txtIPEnd;
@@ -35,7 +31,6 @@ public class NetworkScanner extends JFrame {
         btnClear = new JButton("Limpiar");
         progressBar = new JProgressBar(0, 100);
 
-        // Definir columnas de la tabla
         tableModel = new DefaultTableModel(new String[]{"IP", "Nombre", "Estado", "Tiempo (ms)"}, 0);
         table = new JTable(tableModel);
 
@@ -56,9 +51,6 @@ public class NetworkScanner extends JFrame {
         btnClear.addActionListener(e -> clearAll());
     }
 
-    /**
-     * Valida que las IPs sean correctas y que el rango sea válido antes de iniciar escaneo.
-     */
     private void startScan() {
         String startIP = txtIPStart.getText().trim();
         String endIP = txtIPEnd.getText().trim();
@@ -78,10 +70,6 @@ public class NetworkScanner extends JFrame {
         new Thread(() -> scanRange(startIP, endIP)).start();
     }
 
-    /**
-     * Escanea todas las IPs del rango, realizando ping y buscando nombre DNS.
-     * Actualiza la interfaz en tiempo real.
-     */
     private void scanRange(String startIP, String endIP) {
         long start = ipToLong(startIP);
         long end = ipToLong(endIP);
@@ -120,14 +108,9 @@ public class NetworkScanner extends JFrame {
         });
     }
 
-    /**
-     * Ejecuta el comando ping y devuelve el tiempo en ms o -1 si no responde.
-     */
     private long pingIP(String ip) {
         try {
             long startTime = System.currentTimeMillis();
-            // Para Windows usar: ping -n 1 -w 1000
-            // Para Linux/Mac usar: ping -c 1 -W 1
             String cmd = System.getProperty("os.name").toLowerCase().contains("win")
                     ? "ping -n 1 -w 1000 " + ip
                     : "ping -c 1 -W 1 " + ip;
@@ -142,31 +125,21 @@ public class NetworkScanner extends JFrame {
                 }
             }
         } catch (Exception e) {
-            // Ignorar errores, devolver -1
         }
         return -1;
     }
 
-    /**
-     * Valida que una cadena sea una IP válida.
-     */
     private boolean validateIP(String ip) {
         String pattern = "^((25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)(\\.|$)){4}$";
         return Pattern.matches(pattern, ip);
     }
 
-    /**
-     * Compara dos IPs convertidas a long.
-     */
     private int compareIPs(String ip1, String ip2) {
         long l1 = ipToLong(ip1);
         long l2 = ipToLong(ip2);
         return Long.compare(l1, l2);
     }
 
-    /**
-     * Convierte una IP a un número long para comparación.
-     */
     private long ipToLong(String ip) {
         String[] parts = ip.split("\\.");
         long res = 0;
@@ -176,9 +149,6 @@ public class NetworkScanner extends JFrame {
         return res;
     }
 
-    /**
-     * Convierte un número long a formato IP string.
-     */
     private String longToIP(long ip) {
         return String.format("%d.%d.%d.%d",
                 (ip >> 24) & 0xFF,
@@ -187,9 +157,6 @@ public class NetworkScanner extends JFrame {
                 ip & 0xFF);
     }
 
-    /**
-     * Limpia campos y tabla.
-     */
     private void clearAll() {
         txtIPStart.setText("");
         txtIPEnd.setText("");
